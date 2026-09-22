@@ -1,0 +1,299 @@
+/* 7 Stones booking widget.
+   Everything is scoped under .bkw and interactive elements use two-class
+   selectors (including their own :hover/:focus states) so WordPress themes and
+   Elementor kits that restyle bare button/select/input elements don't leak in. */
+
+.bkw {
+  --bkw-accent: #1a1814;
+  --bkw-hl: #8b6a3e;
+  --bkw-tint: #ede3d0;
+  --bkw-ink: #1a1814;
+  --bkw-muted: #8a8478;
+  --bkw-line: #e8dfc9;
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--bkw-ink);
+}
+
+.bkw *, .bkw *::before, .bkw *::after { box-sizing: border-box; }
+.bkw [hidden] { display: none !important; }
+
+/* Neutralise theme styling on our controls. */
+.bkw .bkw-date, .bkw .bkw-promo-btn, .bkw .bkw-promo-apply,
+.bkw .bkw-nav, .bkw .bkw-day, .bkw .bkw-guests, .bkw .bkw-promo-in, .bkw .bkw-go {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  min-height: 0;
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.bkw .bkw-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Date / guests pill ── */
+.bkw .bkw-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .05);
+  border-radius: 999px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
+}
+
+.bkw .bkw-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bkw-hl);
+  color: #fff;
+}
+
+.bkw .bkw-date {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--bkw-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bkw .bkw-date:hover, .bkw .bkw-date:focus { background: #f5f0e4; color: var(--bkw-ink); }
+.bkw .bkw-date.on, .bkw .bkw-date.on:hover, .bkw .bkw-date.on:focus {
+  background: var(--bkw-tint);
+  color: var(--bkw-hl);
+}
+.bkw .bkw-date:focus-visible { box-shadow: 0 0 0 2px var(--bkw-hl); }
+
+.bkw .bkw-arrow { color: var(--bkw-muted); }
+.bkw .bkw-sep { flex: none; width: 1px; height: 18px; background: var(--bkw-line); }
+
+.bkw .bkw-guests {
+  padding: 8px 22px 8px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8478' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 6px center;
+  color: var(--bkw-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.bkw .bkw-guests:focus-visible { box-shadow: 0 0 0 2px var(--bkw-hl); }
+
+/* ── Promo code ── */
+.bkw .bkw-promo-wrap { position: relative; }
+
+.bkw .bkw-promo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 1px solid rgba(26, 24, 20, .35);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bkw-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s;
+}
+.bkw .bkw-promo-btn:hover, .bkw .bkw-promo-btn:focus { background: rgba(255, 255, 255, .55); color: var(--bkw-ink); }
+.bkw .bkw-promo-btn.has-code, .bkw .bkw-promo-btn.has-code:hover { border-color: var(--bkw-hl); color: var(--bkw-hl); }
+.bkw .bkw-promo-btn:focus-visible { box-shadow: 0 0 0 2px var(--bkw-hl); }
+
+.bkw .bkw-promo-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 9999;
+  width: 280px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--bkw-line);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .14);
+}
+.bkw .bkw-promo-lbl {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bkw-muted);
+}
+.bkw .bkw-promo-row { display: flex; gap: 8px; }
+.bkw .bkw-promo-in {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--bkw-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--bkw-ink);
+}
+.bkw .bkw-promo-in:focus { border-color: var(--bkw-hl); }
+.bkw .bkw-promo-apply {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--bkw-accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bkw .bkw-promo-apply:hover, .bkw .bkw-promo-apply:focus { background: var(--bkw-accent); color: #fff; opacity: .88; }
+
+/* ── Submit ── */
+.bkw .bkw-go, .bkw .bkw-go:visited {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bkw-accent);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.bkw .bkw-go:hover, .bkw .bkw-go:focus { background: var(--bkw-accent); color: #fff; opacity: .88; text-decoration: none; }
+.bkw .bkw-go:focus-visible { box-shadow: 0 0 0 3px rgba(139, 106, 62, .45); }
+
+/* ── Calendar popover ── */
+.bkw .bkw-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 9999;
+  padding: 22px 20px 16px;
+  background: #fff;
+  border: 1px solid var(--bkw-line);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .14);
+}
+
+.bkw .bkw-months { display: flex; gap: 36px; }
+.bkw .bkw-month { width: 292px; }
+
+.bkw .bkw-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.bkw .bkw-title { font-size: 15px; font-weight: 700; color: var(--bkw-ink); }
+.bkw .bkw-nav-sp { width: 34px; height: 34px; }
+.bkw .bkw-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--bkw-line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--bkw-ink);
+  font-size: 15px;
+  cursor: pointer;
+}
+.bkw .bkw-nav:hover:not(:disabled), .bkw .bkw-nav:focus:not(:disabled) { background: #f5f0e4; color: var(--bkw-ink); }
+.bkw .bkw-nav:disabled { opacity: .35; cursor: not-allowed; }
+.bkw .bkw-nav-m { display: none; }
+
+.bkw .bkw-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; }
+.bkw .bkw-dow {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bkw-muted);
+  text-align: center;
+}
+.bkw .bkw-dow span { padding: 4px 0; }
+
+.bkw .bkw-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--bkw-ink);
+  cursor: pointer;
+}
+.bkw .bkw-day:hover:not(:disabled), .bkw .bkw-day:focus:not(:disabled) { background: var(--bkw-tint); color: var(--bkw-ink); }
+.bkw .bkw-day:focus-visible { box-shadow: 0 0 0 2px var(--bkw-hl); }
+.bkw .bkw-num { font-size: 13.5px; font-weight: 600; line-height: 1.1; }
+.bkw .bkw-price { min-height: 10px; font-size: 9.5px; line-height: 1; color: var(--bkw-muted); }
+
+.bkw .bkw-day:disabled { opacity: .32; cursor: not-allowed; }
+.bkw .bkw-day.is-today { border-color: var(--bkw-line); }
+
+.bkw .bkw-day.is-range, .bkw .bkw-day.is-range:hover { background: var(--bkw-tint); border-radius: 0; }
+
+.bkw .bkw-day.is-start, .bkw .bkw-day.is-end,
+.bkw .bkw-day.is-start:hover, .bkw .bkw-day.is-end:hover {
+  background: var(--bkw-accent);
+  border-color: var(--bkw-accent);
+  color: #fff;
+}
+.bkw .bkw-day.is-start .bkw-price, .bkw .bkw-day.is-end .bkw-price { color: #fff; opacity: .85; }
+.bkw .bkw-day.is-start.is-end { border-radius: 8px; }
+.bkw .bkw-day.is-start:not(.is-end) { border-radius: 8px 0 0 8px; }
+.bkw .bkw-day.is-end:not(.is-start) { border-radius: 0 8px 8px 0; }
+
+.bkw .bkw-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bkw-line);
+  font-size: 12px;
+  color: var(--bkw-muted);
+}
+
+/* ── Small screens: stack the controls, show one month ── */
+@media (max-width: 720px) {
+  .bkw .bkw-bar { flex-direction: column; align-items: stretch; }
+
+  .bkw .bkw-pill { flex-wrap: wrap; border-radius: 22px; }
+  .bkw .bkw-sep { display: none; }
+  .bkw .bkw-guests { flex: 1 1 100%; margin-top: 2px; padding-left: 10px; border-top: 1px solid var(--bkw-line); border-radius: 0; }
+
+  .bkw .bkw-promo-btn { width: 100%; justify-content: center; }
+  .bkw .bkw-promo-pop { width: 100%; }
+  .bkw .bkw-go { width: 100%; }
+
+  .bkw .bkw-pop { left: 0 !important; right: 0; padding: 16px 14px 12px; }
+  .bkw .bkw-months { display: block; }
+  .bkw .bkw-month { width: 100%; }
+  .bkw .bkw-month + .bkw-month { display: none; }
+  .bkw .bkw-nav-m { display: inline-flex; }
+}

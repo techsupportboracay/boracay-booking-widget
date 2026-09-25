@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Boracay Booking Widget
  * Description:       A check-in / check-out date picker with live nightly rates for properties on the Boracay.io booking platform. Sends guests to the property's booking engine with their dates already filled in. Add it with the [boracay_booking] shortcode.
- * Version:           1.2.1
+ * Version:           1.3.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Boracay.io
@@ -13,7 +13,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BKW_BOOKING_VERSION', '1.2.1');
+define('BKW_BOOKING_VERSION', '1.3.0');
 define('BKW_BOOKING_OPTION', 'bkw_booking_options');
 
 // ─── Self-updates from GitHub ────────────────────────────────────────────────
@@ -106,6 +106,50 @@ function bkw_booking_clean($input, $fallback) {
     return $out;
 }
 
+// ─── Language ─────────────────────────────────────────────────────────────────
+
+/**
+ * The booking platform's UI languages. The widget shows its own text in the
+ * visitor's language and hands the choice to the booking engine (?lang=), so
+ * the booking page opens in the same language as the site.
+ */
+function bkw_booking_languages() {
+    return array('en', 'zh-TW', 'zh-CN', 'ko', 'ja', 'ru');
+}
+
+/** Maps a WordPress locale / Polylang / WPML code to one of the platform's languages ('en' when unsupported). */
+function bkw_booking_normalize_lang($code) {
+    $code = strtolower(str_replace('_', '-', (string) $code));
+    if ($code === '') {
+        return 'en';
+    }
+    if (in_array($code, array('zh-tw', 'zh-hk', 'zh-mo', 'zh-hant'), true)) {
+        return 'zh-TW';
+    }
+    if (in_array($code, array('zh-cn', 'zh-sg', 'zh-hans', 'zh'), true)) {
+        return 'zh-CN';
+    }
+    $base = substr($code, 0, 2);
+    return in_array($base, array('ko', 'ja', 'ru'), true) ? $base : 'en';
+}
+
+/**
+ * Language for this page view: Polylang, then WPML, then the site's locale.
+ * Override with add_filter('bkw_booking_lang', ...) or the shortcode's lang="" attribute.
+ */
+function bkw_booking_current_lang() {
+    $code = '';
+    if (function_exists('pll_current_language')) {
+        $code = (string) pll_current_language('locale');
+    } elseif (defined('ICL_LANGUAGE_CODE')) {
+        $code = (string) ICL_LANGUAGE_CODE;
+    }
+    if ($code === '') {
+        $code = get_locale();
+    }
+    return bkw_booking_normalize_lang(apply_filters('bkw_booking_lang', $code));
+}
+
 // ─── Shortcode ────────────────────────────────────────────────────────────────
 
 add_action('init', function () {
@@ -116,7 +160,7 @@ add_action('init', function () {
 
 function bkw_booking_shortcode($atts) {
     $saved = bkw_booking_options();
-    $atts  = shortcode_atts(array_merge($saved, array('class' => '')), $atts, 'boracay_booking');
+    $atts  = shortcode_atts(array_merge($saved, array('class' => '', 'lang' => '')), $atts, 'boracay_booking');
     $o     = bkw_booking_clean($atts, $saved);
 
     if ($o['slug'] === '') {
@@ -138,6 +182,7 @@ function bkw_booking_shortcode($atts) {
         'maxGuests'  => $o['max_guests'],
         'buttonText' => $o['button_text'],
         'openIn'     => $o['open_in'],
+        'lang'       => trim((string) $atts['lang']) !== '' ? bkw_booking_normalize_lang($atts['lang']) : bkw_booking_current_lang(),
     );
 
     $classes = array('bkw');
@@ -149,6 +194,9 @@ function bkw_booking_shortcode($atts) {
 
     // The script builds the widget; without JS, visitors still get a working link.
     $fallback = $o['booking_url'] !== '' ? $o['booking_url'] : trailingslashit($o['api_url']) . $o['slug'];
+    if ($config['lang'] !== 'en') {
+        $fallback = add_query_arg('lang', $config['lang'], $fallback);
+    }
 
     return sprintf(
         '<div class="%1$s" style="--bkw-accent:%2$s;--bkw-hl:%3$s" data-bkw-config="%4$s"><noscript><a class="bkw-go" href="%5$s">%6$s</a></noscript></div>',

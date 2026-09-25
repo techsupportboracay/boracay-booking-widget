@@ -51,6 +51,7 @@ All optional; each overrides the matching setting for that placement.
 | `highlight`   | `#8b6a3e`                          | Icon, active date, promo code colour                         |
 | `open_in`     | `same`                             | `same` or `new` tab                                          |
 | `class`       |                                    | Extra CSS class on the wrapper                               |
+| `lang`        | *(automatic)*                      | Force a language: `en`, `zh-TW`, `zh-CN`, `ko`, `ja`, `ru`. Normally detected from the page |
 | `booking_url` | *(blank = automatic)*              | Force a different booking address                            |
 | `min_nights`  | `0` (automatic)                    | Force a minimum stay instead of the property's own           |
 | `api_url`     | `https://reservations.boracay.io`  | Platform that serves prices; only change if it ever moves    |
@@ -84,6 +85,14 @@ uses the fallbacks above.
   every version after that updates itself.
 - The calendar popover is positioned absolutely; if it is clipped, an ancestor
   section has `overflow: hidden` (in Elementor: Section → Layout → Overflow → Default).
+
+## Languages
+
+The widget speaks the booking platform's six languages (English, 繁體中文, 简体中文, 한국어, 日本語, Русский).
+The language is taken from **Polylang** (or WPML), falling back to the site's WordPress locale. It translates the
+widget's own text and date formats, and adds `&lang=xx` to the booking link so the booking page opens in the same
+language. Custom `button_text` is left as written. Override with `[boracay_booking lang="ja"]` or the
+`bkw_booking_lang` filter.
 
 ## Releasing a new version (maintainers)
 

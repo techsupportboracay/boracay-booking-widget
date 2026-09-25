@@ -14,6 +14,74 @@
   var MAX_MONTHS_AHEAD = 18;
   var stores = {}; // one price cache per booking site + property, shared by widgets
 
+  // ─── Language ───────────────────────────────────────────────────────────────
+  // The widget's own text, in the booking platform's six languages. The page's
+  // language arrives in the config ('lang'); anything unknown falls back to English.
+
+  var TEXT = {
+    en: {
+      guest: '{n} guest', guests: '{n} guests', night: '{n} night', nights: '{n} nights',
+      checkIn: 'Check-in', checkOut: 'Check-out', checkInDate: 'Check-in date', checkOutDate: 'Check-out date',
+      guestsLabel: 'Guests', promo: 'Promo Code', promoLabel: 'Promo / agent code', promoPlaceholder: 'Enter code',
+      apply: 'Apply', button: 'Check Availability', choose: 'Choose your dates', prev: 'Previous month', next: 'Next month',
+      priceIn: 'Price in {c}', pickOut: 'Now pick your check-out date'
+    },
+    'zh-TW': {
+      guest: '{n} 位客人', guests: '{n} 位客人', night: '{n} 晚', nights: '{n} 晚',
+      checkIn: '入住', checkOut: '退房', checkInDate: '入住日期', checkOutDate: '退房日期',
+      guestsLabel: '人數', promo: '優惠碼', promoLabel: '優惠碼／代理商代碼', promoPlaceholder: '輸入代碼',
+      apply: '套用', button: '查詢空房', choose: '選擇日期', prev: '上個月', next: '下個月',
+      priceIn: '價格幣別：{c}', pickOut: '請選擇退房日期'
+    },
+    'zh-CN': {
+      guest: '{n} 位客人', guests: '{n} 位客人', night: '{n} 晚', nights: '{n} 晚',
+      checkIn: '入住', checkOut: '退房', checkInDate: '入住日期', checkOutDate: '退房日期',
+      guestsLabel: '人数', promo: '优惠码', promoLabel: '优惠码／代理商代码', promoPlaceholder: '输入代码',
+      apply: '应用', button: '查询空房', choose: '选择日期', prev: '上个月', next: '下个月',
+      priceIn: '价格币种：{c}', pickOut: '请选择退房日期'
+    },
+    ko: {
+      guest: '{n}명', guests: '{n}명', night: '{n}박', nights: '{n}박',
+      checkIn: '체크인', checkOut: '체크아웃', checkInDate: '체크인 날짜', checkOutDate: '체크아웃 날짜',
+      guestsLabel: '투숙 인원', promo: '프로모션 코드', promoLabel: '프로모션 / 에이전트 코드', promoPlaceholder: '코드 입력',
+      apply: '적용', button: '예약 가능 여부 확인', choose: '날짜 선택', prev: '이전 달', next: '다음 달',
+      priceIn: '{c} 기준 가격', pickOut: '체크아웃 날짜를 선택하세요'
+    },
+    ja: {
+      guest: '{n}名', guests: '{n}名', night: '{n}泊', nights: '{n}泊',
+      checkIn: 'チェックイン', checkOut: 'チェックアウト', checkInDate: 'チェックイン日', checkOutDate: 'チェックアウト日',
+      guestsLabel: '人数', promo: 'プロモコード', promoLabel: 'プロモ／エージェントコード', promoPlaceholder: 'コードを入力',
+      apply: '適用', button: '空室を確認', choose: '日付を選択', prev: '前の月', next: '次の月',
+      priceIn: '価格（{c}）', pickOut: 'チェックアウト日を選択してください'
+    },
+    ru: {
+      guest: '{n} гость', guests: '{n} гостей', night: '{n} ночь', nights: '{n} ночей',
+      checkIn: 'Заезд', checkOut: 'Выезд', checkInDate: 'Дата заезда', checkOutDate: 'Дата выезда',
+      guestsLabel: 'Гости', promo: 'Промокод', promoLabel: 'Промокод / код агента', promoPlaceholder: 'Введите код',
+      apply: 'Применить', button: 'Проверить наличие', choose: 'Выберите даты', prev: 'Предыдущий месяц', next: 'Следующий месяц',
+      priceIn: 'Цена в {c}', pickOut: 'Теперь выберите дату выезда'
+    }
+  };
+
+  // Intl locale for dates and month / weekday names.
+  var DATE_LOCALE = { en: 'en-US', 'zh-TW': 'zh-TW', 'zh-CN': 'zh-CN', ko: 'ko-KR', ja: 'ja-JP', ru: 'ru-RU' };
+
+  function pickLang(code) {
+    return Object.prototype.hasOwnProperty.call(TEXT, code) ? code : 'en';
+  }
+
+  /** "{n} guests" / "{n} nights" in the right plural form (Russian has three: 1 гость, 2–4 гостя, 5+ гостей). */
+  function count(L, n, one, many) {
+    if (L === 'ru') {
+      var m10 = n % 10, m100 = n % 100;
+      var guest = one === 'guest';
+      if (m10 === 1 && m100 !== 11) return n + (guest ? ' гость' : ' ночь');
+      if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return n + (guest ? ' гостя' : ' ночи');
+      return n + (guest ? ' гостей' : ' ночей');
+    }
+    return TEXT[L][L === 'en' && n === 1 ? one : many].replace('{n}', n);
+  }
+
   // ─── Date helpers ───────────────────────────────────────────────────────────
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -37,14 +105,14 @@
     return new Date(d.getFullYear(), d.getMonth() + (offset || 0), 1);
   }
 
-  function shortDate(s) {
+  function shortDate(s, loc) {
     return s
-      ? parseYmd(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? parseYmd(s).toLocaleDateString(loc, { month: 'short', day: 'numeric', year: 'numeric' })
       : '';
   }
 
-  function longDate(s) {
-    return parseYmd(s).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  function longDate(s, loc) {
+    return parseYmd(s).toLocaleDateString(loc, { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
   function esc(v) {
@@ -79,34 +147,35 @@
   var ICON_CAL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
   var ICON_TAG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.2"/></svg>';
 
-  function shell(cfg) {
+  function shell(cfg, L) {
+    var T = TEXT[L];
     var opts = '';
     for (var n = 1; n <= cfg.maxGuests; n++) {
-      opts += '<option value="' + n + '">' + n + (n === 1 ? ' guest' : ' guests') + '</option>';
+      opts += '<option value="' + n + '">' + esc(count(L, n, 'guest', 'guests')) + '</option>';
     }
     return (
       '<div class="bkw-bar">' +
         '<div class="bkw-pill">' +
           '<span class="bkw-dot">' + ICON_CAL + '</span>' +
-          '<button type="button" class="bkw-date" data-bkw="in" aria-label="Check-in date"></button>' +
+          '<button type="button" class="bkw-date" data-bkw="in" aria-label="' + esc(T.checkInDate) + '"></button>' +
           '<span class="bkw-arrow" aria-hidden="true">&rarr;</span>' +
-          '<button type="button" class="bkw-date" data-bkw="out" aria-label="Check-out date"></button>' +
+          '<button type="button" class="bkw-date" data-bkw="out" aria-label="' + esc(T.checkOutDate) + '"></button>' +
           '<span class="bkw-sep" aria-hidden="true"></span>' +
-          '<select class="bkw-guests" aria-label="Guests">' + opts + '</select>' +
+          '<select class="bkw-guests" aria-label="' + esc(T.guestsLabel) + '">' + opts + '</select>' +
         '</div>' +
         '<div class="bkw-promo-wrap">' +
-          '<button type="button" class="bkw-promo-btn" aria-expanded="false">' + ICON_TAG + '<span class="bkw-promo-label">Promo Code</span></button>' +
+          '<button type="button" class="bkw-promo-btn" aria-expanded="false">' + ICON_TAG + '<span class="bkw-promo-label">' + esc(T.promo) + '</span></button>' +
           '<div class="bkw-promo-pop" hidden>' +
-            '<span class="bkw-promo-lbl">Promo / agent code</span>' +
+            '<span class="bkw-promo-lbl">' + esc(T.promoLabel) + '</span>' +
             '<div class="bkw-promo-row">' +
-              '<input type="text" class="bkw-promo-in" maxlength="40" placeholder="Enter code" autocomplete="off">' +
-              '<button type="button" class="bkw-promo-apply">Apply</button>' +
+              '<input type="text" class="bkw-promo-in" maxlength="40" placeholder="' + esc(T.promoPlaceholder) + '" autocomplete="off">' +
+              '<button type="button" class="bkw-promo-apply">' + esc(T.apply) + '</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
         '<a class="bkw-go" href="#">' + esc(cfg.buttonText) + '</a>' +
       '</div>' +
-      '<div class="bkw-pop" role="dialog" aria-label="Choose your dates" hidden>' +
+      '<div class="bkw-pop" role="dialog" aria-label="' + esc(T.choose) + '" hidden>' +
         '<div class="bkw-months"></div>' +
         '<div class="bkw-foot"><span class="bkw-cur"></span><span class="bkw-hint"></span></div>' +
       '</div>'
@@ -131,10 +200,14 @@
     // 0 / unset = automatic: use the property's own minimum stay once it is known.
     cfg.minNights = Math.max(0, parseInt(cfg.minNights, 10) || 0);
     cfg.maxGuests = Math.max(1, Math.min(20, parseInt(cfg.maxGuests, 10) || 8));
-    cfg.buttonText = cfg.buttonText || 'Check Availability';
+    var L = pickLang(cfg.lang);
+    var T = TEXT[L];
+    var loc = DATE_LOCALE[L];
+    // The stock button text follows the visitor's language; a custom one is the site owner's own wording.
+    cfg.buttonText = (!cfg.buttonText || cfg.buttonText === TEXT.en.button) ? T.button : cfg.buttonText;
 
     root.__bkw = true;
-    root.innerHTML = shell(cfg);
+    root.innerHTML = shell(cfg, L);
 
     // Shared by every widget for the same property, so a page with several
     // (or the same one twice) makes a single request per month.
@@ -200,6 +273,7 @@
       u.searchParams.set('check_out', st.checkOut);
       u.searchParams.set('guests', String(st.guests));
       if (st.promo) u.searchParams.set('agent_code', st.promo);
+      if (L !== 'en') u.searchParams.set('lang', L);
       return u.toString();
     }
 
@@ -253,7 +327,7 @@
       var from = ymd(st.cursor);
       if (store.loaded[from]) return;
       var to = ymd(new Date(st.cursor.getFullYear(), st.cursor.getMonth() + 2, 0));
-      var url = api.origin + '/api/' + encodeURIComponent(cfg.slug) + '/rate-calendar?from=' + from + '&to=' + to;
+      var url = api.origin + '/api/' + encodeURIComponent(cfg.slug) + '/rate-calendar?from=' + from + '&to=' + to + (L !== 'en' ? '&lang=' + encodeURIComponent(L) : '');
 
       store.loaded[from] = true; // set early so paging doesn't fire duplicate requests
       fetch(url, { headers: { Accept: 'application/json' } })
@@ -281,7 +355,7 @@
     function loadRoomCapacity() {
       if (store.roomsLoaded) return;
       store.roomsLoaded = true; // set early so duplicate widgets don't both fetch
-      var url = api.origin + '/api/' + encodeURIComponent(cfg.slug) + '/rooms';
+      var url = api.origin + '/api/' + encodeURIComponent(cfg.slug) + '/rooms' + (L !== 'en' ? '?lang=' + encodeURIComponent(L) : '');
       fetch(url, { headers: { Accept: 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('rooms ' + r.status)); })
         .then(function (data) {
@@ -306,7 +380,7 @@
       if (st.guests > max) st.guests = max;
       var opts = '';
       for (var n = 1; n <= max; n++) {
-        opts += '<option value="' + n + '">' + n + (n === 1 ? ' guest' : ' guests') + '</option>';
+        opts += '<option value="' + n + '">' + esc(count(L, n, 'guest', 'guests')) + '</option>';
       }
       el.guests.innerHTML = opts;
       el.guests.value = String(st.guests);
@@ -333,22 +407,21 @@
 
       for (var m = 0; m < 2; m++) {
         var first = monthStart(st.cursor, m);
-        var title = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        var title = first.toLocaleDateString(loc, { month: 'long', year: 'numeric' });
         var count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
 
         html += '<div class="bkw-month"><div class="bkw-head">';
         if (m === 0) {
-          html += '<button type="button" class="bkw-nav" data-nav="-1" aria-label="Previous month"' + (canBack ? '' : ' disabled') + '>&larr;</button>' +
+          html += '<button type="button" class="bkw-nav" data-nav="-1" aria-label="' + esc(T.prev) + '"' + (canBack ? '' : ' disabled') + '>&larr;</button>' +
                   '<span class="bkw-title">' + esc(title) + '</span>' +
-                  '<button type="button" class="bkw-nav bkw-nav-m" data-nav="1" aria-label="Next month"' + (canForward ? '' : ' disabled') + '>&rarr;</button>';
+                  '<button type="button" class="bkw-nav bkw-nav-m" data-nav="1" aria-label="' + esc(T.next) + '"' + (canForward ? '' : ' disabled') + '>&rarr;</button>';
         } else {
           html += '<span class="bkw-nav-sp"></span>' +
                   '<span class="bkw-title">' + esc(title) + '</span>' +
-                  '<button type="button" class="bkw-nav" data-nav="1" aria-label="Next month"' + (canForward ? '' : ' disabled') + '>&rarr;</button>';
+                  '<button type="button" class="bkw-nav" data-nav="1" aria-label="' + esc(T.next) + '"' + (canForward ? '' : ' disabled') + '>&rarr;</button>';
         }
         html += '</div><div class="bkw-grid bkw-dow">';
-        var dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        for (var w = 0; w < 7; w++) html += '<span>' + dow[w] + '</span>';
+        for (var w = 0; w < 7; w++) html += '<span>' + esc(new Date(2023, 0, 1 + w).toLocaleDateString(loc, { weekday: 'short' })) + '</span>';
         html += '</div><div class="bkw-grid">';
 
         for (var b = 0; b < first.getDay(); b++) html += '<span></span>';
@@ -356,7 +429,7 @@
           var date = ymd(new Date(first.getFullYear(), first.getMonth(), day));
           var past = date < today;
           html += '<button type="button" class="bkw-day" data-date="' + date + '"' + (past ? ' disabled' : '') +
-                  ' aria-label="' + esc(longDate(date)) + '">' +
+                  ' aria-label="' + esc(longDate(date, loc)) + '">' +
                   '<span class="bkw-num">' + day + '</span>' +
                   '<span class="bkw-price">' + (past ? '' : esc(compact(store.prices[date], symbol))) + '</span>' +
                   '</button>';
@@ -369,12 +442,12 @@
 
     /** Refresh everything that depends on the current selection, without rebuilding the DOM. */
     function paint() {
-      el.dateIn.textContent  = shortDate(st.checkIn)  || 'Check-in';
-      el.dateOut.textContent = shortDate(st.checkOut) || 'Check-out';
+      el.dateIn.textContent  = shortDate(st.checkIn, loc)  || T.checkIn;
+      el.dateOut.textContent = shortDate(st.checkOut, loc) || T.checkOut;
       el.dateIn.classList.toggle('on',  calOpen() && st.mode === 'in');
       el.dateOut.classList.toggle('on', calOpen() && st.mode === 'out');
 
-      el.promoLabel.textContent = st.promo || 'Promo Code';
+      el.promoLabel.textContent = st.promo || T.promo;
       el.promoBtn.classList.toggle('has-code', !!st.promo);
 
       if (st.checkIn && st.checkOut) el.go.setAttribute('href', bookingUrl());
@@ -392,12 +465,12 @@
         days[i].classList.toggle('is-range', !!st.checkIn && !!previewEnd && d > st.checkIn && d < previewEnd);
       }
 
-      el.cur.textContent = 'Price in ' + store.currency;
+      el.cur.textContent = T.priceIn.replace('{c}', store.currency);
       if (st.mode === 'out') {
-        el.hint.textContent = 'Now pick your check-out date';
+        el.hint.textContent = T.pickOut;
       } else if (st.checkIn && st.checkOut) {
         var nights = Math.round((parseYmd(st.checkOut) - parseYmd(st.checkIn)) / 86400000);
-        el.hint.textContent = nights + (nights === 1 ? ' night' : ' nights');
+        el.hint.textContent = count(L, nights, 'night', 'nights');
       } else {
         el.hint.textContent = '';
       }
